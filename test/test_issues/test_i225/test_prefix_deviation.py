@@ -13,6 +13,13 @@ try:
 except ImportError:
     import pip._internal.locations as locations
 
+try:
+    scheme = locations.distutils_scheme('pyang')
+except:
+    print("cannot get scheme from pip, skipping")
+    exit(0)
+
+
 from pyang.context import Context
 from pyang.repository import FileRepository
 

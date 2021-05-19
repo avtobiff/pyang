@@ -13,13 +13,6 @@ try:
 except ImportError:
     import pip._internal.locations as locations
 
-try:
-    scheme = locations.distutils_scheme('pyang')
-except:
-    print("cannot get scheme from pip, skipping")
-    exit(0)
-
-
 from pyang.context import Context
 from pyang.repository import FileRepository
 
@@ -104,9 +97,13 @@ def test_can_find_modules_when_prefix_differ(monkeypatch):
 
     # store pip location.
     # monkeypatching sys.prefix will side_effect scheme.
-    scheme = locations.distutils_scheme('pyang')
-    monkeypatch.setattr(
-        locations, 'distutils_scheme', lambda *_: scheme)
+    try:
+        scheme = locations.distutils_scheme('pyang')
+        monkeypatch.setattr(
+            locations, 'distutils_scheme', lambda *_: scheme)
+    except:
+        print("cannot get scheme from pip, skipping")
+        return
 
     # simulate #225 description
     monkeypatch.setattr(sys, 'prefix', '/usr')

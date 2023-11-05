@@ -130,8 +130,8 @@ re_descendant_schema_nodeid = re.compile("^" + descendant_schema_nodeid + "$")
 re_deviate = re.compile(r"^(add|delete|replace|not-supported)$")
 
 # Not part of YANG syntax per se but useful for pyang in several places
-re_filename = re.compile(r"^([^@]*?)" +          # putative module name
-                         r"(?:@([^.]*?))?" +     # putative revision
+re_filename = re.compile(r"^([^@#]*?)" +          # putative module name
+                         r"(?:(?:@([^.]*?)|#([^.]*?)))?" + # revision or label
                          r"(?:\.yang|\.yin)*" +  # foo@bar.yang.yin.yang.yin ?
                          r"\.(yang|yin)$")
 
@@ -356,6 +356,8 @@ yin_map = \
      'require-instance': ('value',       False),
      'revision':         ('date',        False),
      'revision-date':    ('date',        False),
+     # HACK
+     'rev:revision-label':   ('value',       False),
      'rpc':              ('name',        False),
      'status':           ('value',       False),
      'submodule':        ('name',        False),

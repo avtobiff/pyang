@@ -68,24 +68,31 @@ def get_latest_revision(module):
     revisions = [revision.arg for revision in module.search('revision')]
     return max(revisions) if revisions else 'unknown'
 
+def get_latest_revision_label(module):
+    labels = []
+    for revision in module.search('revision'):
+        label = revision.search_one(('rev', 'label')).arg
+        labels.append(label)
+    return max(labels) if labels != [] else 'unknown'
+
 
 # module is the (sub)module where the statement is defined
 def prefix_to_modulename_and_revision(module, prefix, pos, errors):
     if prefix == '' or prefix == module.i_prefix:
         if module.i_version == '1':
             return module.arg, None
-        return module.i_main_module.arg, None
+        return module.i_main_module.arg, None, None
     try:
-        (modulename, revision) = module.i_prefixes[prefix]
+        (modulename, revision, recommended_min) = module.i_prefixes[prefix]
     except KeyError:
         if prefix not in module.i_missing_prefixes:
             err_add(errors, pos, 'PREFIX_NOT_DEFINED', prefix)
         module.i_missing_prefixes[prefix] = True
-        return None, None
+        return None, None, None
     # remove the prefix from the unused
     if prefix in module.i_unused_prefixes:
         del module.i_unused_prefixes[prefix]
-    return modulename, revision
+    return modulename, revision, recommended_min
 
 # module is the (sub)module where the statement is defined
 def prefix_to_module(module, prefix, pos, errors):
@@ -93,11 +100,11 @@ def prefix_to_module(module, prefix, pos, errors):
         if module.i_version == '1':
             return module
         return module.i_main_module
-    modulename, revision = \
+    modulename, revision, recommended_min = \
         prefix_to_modulename_and_revision(module, prefix, pos, errors)
     if modulename is None:
         return None
-    return module.i_ctx.get_module(modulename, revision)
+    return module.i_ctx.get_module(modulename, revision, recommended_min)
 
 
 def unique_prefixes(context):

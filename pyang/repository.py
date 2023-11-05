@@ -124,11 +124,12 @@ class FileRepository(Repository):
                 if file_path.is_file():
                     m = syntax.re_filename.search(file_path.name)
                     if m is not None:
-                        name, rev, in_format = m.groups()
+                        name, rev, label, in_format = m.groups()
                         if not os.access(str(file_path), os.R_OK):
                             continue
                         handle = in_format, str(file_path)
-                        self.modules.append((name, rev, handle))
+                        # Set either revision or label
+                        self.modules.append((name, rev, label, handle))
                 elif (not self.no_path_recurse
                       and d != '.' and file_path.is_dir()):
                     add_files_from_dir(file_path)

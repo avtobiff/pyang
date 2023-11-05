@@ -464,19 +464,30 @@ def v_init_module(ctx, stmt):
         if p is not None:
             prefix = p.arg
             r = i.search_one('revision-date')
+            rmin = i.search_one(('rev', 'recommended-min'))
+
             if r is not None:
                 revision = r.arg
             else:
                 revision = None
+
+            # add recommended-min
+            if rmin is not None:
+                recommended_min = rmin.arg
+            else:
+                recommended_min = None
+            stmt.i_recommended_min = recommended_min
+
             # check if the prefix is already used by someone else
             if prefix in stmt.i_prefixes:
-                (m, _rev) = stmt.i_prefixes[prefix]
+                (m, _rev, _rmin) = stmt.i_prefixes[prefix]
                 err_add(ctx.errors, p.pos, 'PREFIX_ALREADY_USED', (prefix, m))
             # add the prefix to the unused prefixes
             if (i.arg is not None and p.arg is not None
                 and i.arg != stmt.i_modulename):
-                stmt.i_prefixes[p.arg] = (i.arg, revision)
+                stmt.i_prefixes[p.arg] = (i.arg, revision, recommended_min)
                 stmt.i_unused_prefixes[p.arg] = i
+
 
     stmt.i_features = {}
     stmt.i_identities = {}
@@ -504,11 +515,12 @@ def v_init_module(ctx, stmt):
 def v_init_extension(ctx, stmt):
     """find the modulename of the prefix, and set `stmt.keyword`"""
     (prefix, identifier) = stmt.raw_keyword
-    (modname, revision) = util.prefix_to_modulename_and_revision(
+    (modname, revision, label) = util.prefix_to_modulename_and_revision(
         stmt.i_module, prefix, stmt.pos, ctx.errors)
     stmt.keyword = (modname, identifier)
     stmt.i_extension_modulename = modname
     stmt.i_extension_revision = revision
+    stmt.i_extension_revision_label = label
     stmt.i_extension = None
 
 def v_init_stmt(ctx, stmt):
@@ -531,12 +543,33 @@ def v_grammar_module(ctx, stmt):
     # check revision statements order
     prev = None
     stmt.i_latest_revision = None
-    for r in stmt.search('revision'):
+    stmt.i_latest_revision_label = None
+    revs = stmt.search('revision')
+
+    # revision dates
+    for r in revs:
         if stmt.i_latest_revision is None or r.arg > stmt.i_latest_revision:
             stmt.i_latest_revision = r.arg
         if prev is not None and r.arg > prev:
             err_add(ctx.errors, r.pos, 'REVISION_ORDER', ())
         prev = r.arg
+
+    # revision labels
+    for r in revs:
+        label = r.search_one(('ietf-yang-revisions', 'label'))
+        if stmt.i_latest_revision_label is None or label.arg > stmt.i_latest_revision_label:
+            stmt.i_latest_revision = label.arg
+        if prev is not None and label.arg > prev:
+            err_add(ctx.errors, label.pos, 'REVISION_LABEL_ORDER', ())
+        prev = label.arg
+
+    # recommended-min is lower than any available revision-label
+    try:
+        if label.arg < stmt.i_recommended_min:
+            err_add(ctx.errors, label.pos, 'RECOMMENDED_MIN', ())
+    except:
+        pass
+
 
 def v_grammar_typedef(ctx, stmt):
     if types.is_base_type(stmt.arg):
@@ -3157,6 +3190,7 @@ class ModSubmodStatement(Statement):
 
         # see v_grammar_module()
         'i_latest_revision',
+        'i_latest_revision_label',
     )
 
     def __init__(self, top, parent, pos, keyword, arg=None):

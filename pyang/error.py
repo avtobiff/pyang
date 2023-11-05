@@ -440,6 +440,13 @@ error_codes = \
     'REVISION_ORDER':
       (4,
        'the revision statements are not given in reverse chronological order'),
+    'REVISION_LABEL_ORDER':
+      (4,
+       'the revision-label statements are not given in reverse chronological '
+       'order'),
+    'RECOMMENDED_MIN':
+      (4,
+       'the recommended-min is lower than any revision-label available'),
     'EXTENSION_ARGUMENT_PRESENT':
       (1,
        'unexpected argument for extension "%s"'),

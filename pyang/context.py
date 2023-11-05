@@ -40,22 +40,24 @@ class Context(object):
         self.keep_comments = False
         self.keep_arg_substrings = False
 
-        for mod, rev, handle in self.repository.get_modules_and_revisions(self):
+        for mod, rev, label, handle in \
+                self.repository.get_modules_and_revisions(self):
             if mod not in self.revs:
                 self.revs[mod] = []
             revs = self.revs[mod]
-            revs.append((rev, handle))
+            # Update label later
+            revs.append((rev, label, handle))
 
     def internal_reset(self):
         self.modules = {}
         self.revs = {}
         self.errors = []
-        for mod, rev, handle in self.repository.get_modules_and_revisions(
-                self):
+        for mod, rev, label, handle in \
+                self.repository.get_modules_and_revisions(self):
             if mod not in self.revs:
                 self.revs[mod] = []
             revs = self.revs[mod]
-            revs.append((rev, handle))
+            revs.append((rev, label, handle))
 
     def add_module(self, ref, text, in_format=None,
                    expect_modulename=None, expect_revision=None,
@@ -98,6 +100,7 @@ class Context(object):
                                   (module.arg, ref, expect_modulename))
 
         latest_rev = util.get_latest_revision(module)
+        latest_lbl = util.get_latest_revision_label(module)
         if expect_revision is not None:
             if not re.match(syntax.re_date, expect_revision):
                 error.err_add(self.errors, module.pos, 'FILENAME_BAD_REVISION',
@@ -114,7 +117,7 @@ class Context(object):
         if module.arg not in self.revs:
             self.revs[module.arg] = []
             revs = self.revs[module.arg]
-            revs.append((latest_rev, None))
+            revs.append((latest_rev, latest_lbl, None))
 
         return self.add_parsed_module(module)
 
@@ -133,45 +136,51 @@ class Context(object):
             return None
 
         rev = util.get_latest_revision(module)
-        if (module.arg, rev) in self.modules:
-            other = self.modules[(module.arg, rev)]
+        lbl = util.get_latest_revision_label(module)
+        if (module.arg, rev, lbl) in self.modules:
+            other = self.modules[(module.arg, rev, lbl)]
             return other
 
-        self.modules[(module.arg, rev)] = module
+        self.modules[(module.arg, rev, lbl)] = module
 
         return module
 
     def del_module(self, module):
         """Remove a module from the context"""
         rev = util.get_latest_revision(module)
-        del self.modules[(module.arg, rev)]
+        lbl = util.get_latest_revision_label(module)
+        del self.modules[(module.arg, rev, lbl)]
 
-    def get_module(self, modulename, revision=None):
+    def get_module(self, modulename, revision=None, label=None):
         """Return the module if it exists in the context"""
         if revision is None and modulename in self.revs:
-            (revision, _handle) = self._get_latest_rev(self.revs[modulename])
+            (revision, label, _handle) = \
+                    self._get_latest_rev(self.revs[modulename])
         if revision is not None:
-            if (modulename,revision) in self.modules:
-                return self.modules[(modulename, revision)]
+            if (modulename,revision,label) in self.modules:
+                return self.modules[(modulename, revision, label)]
         else:
             return None
 
     def _get_latest_rev(self, revs):
         self._ensure_revs(revs)
         latest = None
+        label = None
         lhandle = None
-        for rev, handle in revs:
-            if rev is not None and (latest is None or rev > latest):
+        for rev, lbl, handle in revs:
+            if rev is not None and \
+                    (latest is None or rev > latest or lbl > label):
                 latest = rev
+                label = lbl
                 lhandle = handle
-        return latest, lhandle
+        return latest, label, lhandle
 
     def _ensure_revs(self, revs):
         i = 0
         length = len(revs)
         repository = self.repository
         while i < length:
-            rev, handle = revs[i]
+            rev, label, handle = revs[i]
             if rev is None:
                 # now we must read the revision from the module
                 try:
@@ -199,7 +208,7 @@ class Context(object):
             i += 1
 
     def search_module(self, pos, modulename, revision=None,
-                      primary_module=False):
+                      recommended_min=None, primary_module=False):
         """Searches for a module named `modulename` in the repository
 
         If the module is found, it is added to the context.
@@ -216,12 +225,12 @@ class Context(object):
             return None
 
         if revision is not None:
-            if (modulename,revision) in self.modules:
-                return self.modules[(modulename, revision)]
+            if (modulename,revision,label) in self.modules:
+                return self.modules[(modulename, revision, label)]
             self._ensure_revs(self.revs[modulename])
             x = util.keysearch(revision, 0, self.revs[modulename])
             if x is not None:
-                (_revision, handle) = x
+                (_revision, _label, handle) = x
                 if handle is None:
                     # this revision doesn't exist in the repos, error reported
                     return None
@@ -234,9 +243,10 @@ class Context(object):
                 return None
         else:
             # get the latest revision
-            (revision, handle) = self._get_latest_rev(self.revs[modulename])
-            if (modulename, revision) in self.modules:
-                return self.modules[(modulename, revision)]
+            (revision, label, handle) = \
+                    self._get_latest_rev(self.revs[modulename])
+            if (modulename, revision, label) in self.modules:
+                return self.modules[(modulename, revision, label)]
 
         if handle is None:
             module = None
@@ -284,7 +294,7 @@ class Context(object):
         #     return None
         return module
 
-    def read_module(self, modulename, revision=None, extra=None):
+    def read_module(self, modulename, revision=None, label=None, extra=None):
         """Searches for a module named `modulename` in the repository
 
         The module is just read, and not compiled at all.
@@ -298,12 +308,12 @@ class Context(object):
             return None
 
         if revision is not None:
-            if (modulename,revision) in self.modules:
-                return self.modules[(modulename, revision)]
+            if (modulename,revision,label) in self.modules:
+                return self.modules[(modulename, revision, label)]
             self._ensure_revs(self.revs[modulename])
             x = util.keysearch(revision, 1, self.revs[modulename])
             if x is not None:
-                _revision, handle = x
+                _revision, _label, handle = x
                 if handle is None:
                     # this revision doesn't exist in the repos, error reported
                     return None
@@ -312,9 +322,10 @@ class Context(object):
                 return None
         else:
             # get the latest revision
-            (revision, handle) = self._get_latest_rev(self.revs[modulename])
-            if (modulename, revision) in self.modules:
-                return self.modules[(modulename, revision)]
+            (revision, label, handle) = \
+                    self._get_latest_rev(self.revs[modulename])
+            if (modulename, revision, label) in self.modules:
+                return self.modules[(modulename, revision, label)]
 
         if handle[0] == 'parsed':
             module = handle[1]

@@ -1,0 +1,72 @@
+module example-module {
+
+  namespace "urn:example:module";
+  prefix "prefix-name";
+  rev:revision-label-scheme "yangver:yang-semver";
+
+  import ietf-yang-revisions { prefix "rev"; }
+  import ietf-yang-semver { prefix "yangver"; }
+
+  description
+    "to be completed";
+
+  revision 2019-06-01 {
+    rev:label 3.1.0;
+    description "Add new functionality.";
+  }
+
+  revision 2019-03-01 {
+    rev:label 3.0.0;
+    rev:non-backwards-compatible;
+    description
+      "Add new functionality. Remove some deprecated nodes.";
+  }
+
+  revision 2019-02-01 {
+    rev:label 2.0.0;
+    rev:non-backwards-compatible;
+    description "Apply bugfix to pattern statement";
+  }
+
+  revision 2019-01-01 {
+    rev:label 1.0.0;
+    description "Initial revision";
+  }
+
+  //YANG module definition starts here
+}
+module example-module {
+
+  namespace "urn:example:module";
+  prefix "prefix-name";
+  rev:revision-label-scheme "yangver:yang-semver";
+
+  import ietf-yang-revisions { prefix "rev"; }
+  import ietf-yang-semver { prefix "yangver"; }
+
+  description
+    "to be completed";
+
+  revision 2019-05-01 {
+    rev:label 2.2.0;
+    description "Backwards-compatible bugfix to enhancement.";
+  }
+
+  revision 2019-04-01 {
+    rev:label 2.1.0;
+    description "Apply enhancement to older release train.";
+  }
+
+  revision 2019-02-01 {
+    rev:label 2.0.0;
+    rev:non-backwards-compatible;
+    description "Apply bugfix to pattern statement";
+  }
+
+  revision 2019-01-01 {
+    rev:label 1.0.0;
+    description "Initial revision";
+  }
+
+  //YANG module definition starts here
+}
